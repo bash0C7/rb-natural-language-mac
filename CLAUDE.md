@@ -26,7 +26,7 @@ ext/natural_language_mac/natural_language_mac.c   ← rb_define_singleton_method
   │
   │   natural_language_mac_{detect_language,tokenize,tag}(c_text)
   ▼
-ext/natural_language_mac/Sources/NaturalLanguageMac/NaturalLanguageMacBridge.swift   ← @_cdecl
+ext/natural_language_mac/Sources/NaturalLanguageMac/NaturalLanguageMacBridge.swift   ← @c (SE-0495)
   │
   ▼
 ext/natural_language_mac/Sources/NaturalLanguageMac/NaturalLanguageMac.swift   ← NLLanguageRecognizer / NLTokenizer / NLTagger
@@ -49,7 +49,7 @@ ext/natural_language_mac/Sources/NaturalLanguageMac/NaturalLanguageMac.swift   �
 |---|---|
 | `lib/natural_language_mac.rb` | `require_relative` to load the .bundle; host of `module NaturalLanguageMac` |
 | `ext/natural_language_mac/natural_language_mac.c` | `Init_natural_language_mac` exposes the three singleton methods; copies Swift-returned `char*` into a Ruby UTF-8 String, then calls `natural_language_mac_free` |
-| `NaturalLanguageMacBridge.swift` | C ABI exports via `@_cdecl`. Calls Swift implementations and returns C strings via `strdup` |
+| `NaturalLanguageMacBridge.swift` | C ABI exports via `@c` (SE-0495). Calls Swift implementations and returns C strings via `strdup` |
 | `NaturalLanguageMac.swift` | Real implementation: `NLLanguageRecognizer.dominantLanguage`, `NLTokenizer(unit:.word)`, `NLTagger(tagSchemes:[.lexicalClass])` |
 | `ext/natural_language_mac/extconf.rb` | `SwiftGem::Mkmf.create_swift_makefile("natural_language_mac/natural_language_mac", package: "NaturalLanguageMac", source_dir: __dir__)` |
 | `examples/natural_language_mac.swift` | Pure-Swift sample script. Ruby-free, kept as a NaturalLanguage-behavior reference |
@@ -74,7 +74,7 @@ t-wada style RED → GREEN → REFACTOR independent commits. test-unit. Inline-s
 
 ## Environment requirements
 
-macOS 12+, Apple Silicon, Swift 6.0+, Ruby 3.2+, bundler 4.x, rake-compiler 1.2+. `Gemfile` references swift_gem via `path: "../swift_gem"` until publish. `Gemfile.lock` not git-tracked.
+macOS 12+, Apple Silicon, Swift 6.3+ (SE-0495 `@c` requires 6.3; install via [swiftly](https://www.swift.org/install/macos/)), Ruby 3.2+, bundler 4.x, rake-compiler 1.2+. `Gemfile` references swift_gem via `path: "../swift_gem"` until publish. `Gemfile.lock` not git-tracked.
 
 ## Prohibitions
 
