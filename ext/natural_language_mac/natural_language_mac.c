@@ -1,5 +1,5 @@
 #include <ruby.h>
-#include "natural_language_mac.h"
+#include "NaturalLanguageMac-Swift.h"
 
 static VALUE call_swift_string(char *(*fn)(const char *), VALUE input) {
     const char *c_input = StringValueCStr(input);
