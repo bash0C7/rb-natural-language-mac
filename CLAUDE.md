@@ -8,7 +8,7 @@ Ruby native binding for Apple's Natural Language framework on macOS. Sibling of 
 
 1. Thin wrapper. Pass-through Natural Language API. One text → one string (newline separator, optional `\t` for sub-fields). Option expansion (custom NLEmbedding, NLModel, sentiment, etc.) is intentionally not added until needed.
 2. Fixed defaults: tokenizer unit `.word`; tagger scheme `.lexicalClass`. Changes go through new API methods; never break existing behavior.
-3. Synchronous calls. NaturalLanguage APIs are not async, so no semaphore/timeout. Failure (nil image, empty input, OS error) → empty string. Does not raise exceptions.
+3. Synchronous calls. NaturalLanguage APIs are not async, so no semaphore/timeout. Failure (empty input, OS error, framework returned nothing) → empty string. Does not raise exceptions. (Unlike sibling path-taking gems, there is no file involved here, so no `Errno::ENOENT` surface.)
 4. C bridge string handoff. Swift allocates with `strdup`, C frees via `natural_language_mac_free`. Bridge function signatures fixed at `UnsafePointer<CChar>` ↔ `UnsafeMutablePointer<CChar>`.
 5. Scaffold parity. `swift_gem new rb-natural-language-mac` produces a skeleton whose only diffs against this repo are the implementation body, fixtures, and build artifacts.
 
@@ -52,7 +52,7 @@ ext/natural_language_mac/Sources/NaturalLanguageMac/NaturalLanguageMac.swift   �
 | `NaturalLanguageMacBridge.swift` | C ABI exports via `@c` (SE-0495). Calls Swift implementations and returns C strings via `strdup` |
 | `NaturalLanguageMac.swift` | Real implementation: `NLLanguageRecognizer.dominantLanguage`, `NLTokenizer(unit:.word)`, `NLTagger(tagSchemes:[.lexicalClass])` |
 | `ext/natural_language_mac/extconf.rb` | `SwiftGem::Mkmf.create_swift_makefile("natural_language_mac/natural_language_mac", package: "NaturalLanguageMac", source_dir: __dir__)` |
-| `examples/natural_language_mac.swift` | Pure-Swift sample script. Ruby-free, kept as a NaturalLanguage-behavior reference |
+| `examples/natural_language_mac.swift` | Pure-Swift sample script: `xcrun swift examples/natural_language_mac.swift "<text>"`. Ruby-free, kept as a NaturalLanguage-behavior reference. Must use `xcrun swift` (Xcode toolchain) — swiftly 6.3's interpret mode cannot JIT-link Apple system frameworks |
 | `Rakefile` | `Rake::ExtensionTask("natural_language_mac")` + `task test: :compile`. `task console: :compile` for IRB |
 
 ## Build flow
@@ -61,7 +61,7 @@ ext/natural_language_mac/Sources/NaturalLanguageMac/NaturalLanguageMac.swift   �
 
 ## Usage / why no CLI
 
-Library only — same rationale as `rb-vision-ocrmac`. Interactive checks via `bundle exec rake console`. `examples/natural_language_mac.swift` for pure-Swift Vision-free verification.
+Library only — same rationale as `rb-vision-ocrmac`. Interactive checks via `bundle exec rake console`. `examples/natural_language_mac.swift` for pure-Swift Ruby-free verification of NaturalLanguage behavior.
 
 ## TDD discipline
 
@@ -75,6 +75,8 @@ t-wada style RED → GREEN → REFACTOR independent commits. test-unit. Inline-s
 ## Environment requirements
 
 macOS 12+, Apple Silicon, Swift 6.3+ (SE-0495 `@c` requires 6.3; install via [swiftly](https://www.swift.org/install/macos/)), Ruby 3.2+, bundler 4.x, rake-compiler 1.2+. `Gemfile` references swift_gem via `path: "../swift_gem"` until publish. `Gemfile.lock` not git-tracked.
+
+Xcode Command Line Tools required only for running `examples/natural_language_mac.swift` via `xcrun swift` — swiftly's 6.3 swift binary has broken Apple-framework JIT linkage in interpret mode (verified across the family: SDKROOT, -F, -Xlinker, -sdk all fail). The library build itself does not need CLT. example.swift does not use SE-0495 `@c`, so CLT's older swift (6.2.4) suffices. Install with `xcode-select --install`.
 
 ## Prohibitions
 
