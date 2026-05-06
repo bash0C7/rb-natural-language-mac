@@ -40,4 +40,13 @@ class NaturalLanguageMacTest < Test::Unit::TestCase
   test "tag returns empty string for empty input" do
     assert_equal("", NaturalLanguageMac.tag(""))
   end
+
+  test "tag with explicit language code returns Noun for Japanese" do
+    output = NaturalLanguageMac.tag("これは会議の議事録です", "ja")
+    pairs = output.split("\n").map { |line| line.split("\t") }
+    assert(pairs.all? { |p| p.length == 2 }, "Expected token\\ttag pairs, got: #{output.inspect}")
+    tags = pairs.map(&:last)
+    assert(tags.include?("Noun"),
+           "Expected 'Noun' tag for Japanese input with lang='ja', got: #{tags.inspect}")
+  end
 end
