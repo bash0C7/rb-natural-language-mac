@@ -38,11 +38,19 @@ NaturalLanguageMac.embedding_dimension("en")
 
 NaturalLanguageMac.embed_sentence("Today is a fine day.", "en")
 # => [0.4472, 0.2692, -0.2569, ...]   (Array<Float>, size == embedding_dimension)
+
+NaturalLanguageMac.contextual_dimension("ja")
+# => 512   (NLContextualEmbedding, macOS 14+)
+
+NaturalLanguageMac.embed_contextual("これは日本語の文章です", "ja")
+# => [0.1234, -0.0567, ...]   (Array<Float>, mean-pooled token vectors)
 ```
 
 `detect_language` / `tokenize` / `tag` return a single newline-separated string. `tag` uses tab as the sub-field separator. Whitespace and punctuation are skipped by the tagger. On failure (empty input, OS error) the methods return `""`.
 
 `embed_sentence(text, language)` returns the sentence embedding from `NLEmbedding.sentenceEmbedding(for: NLLanguage(rawValue: language))` as an `Array<Float>`. Returns `[]` on empty text, empty language, unsupported language, or when Apple has not shipped a sentence embedding model for the requested language. `embedding_dimension(language)` returns the embedding dimension as `Integer` (or `0` if unavailable).
+
+`embed_contextual(text, language)` (macOS 14+) returns a mean-pooled contextual embedding from `NLContextualEmbedding(language:)`. This is the **only** path that yields Japanese (and many CJK / multilingual) sentence vectors, since `NLEmbedding.sentenceEmbedding` ships only `en` / `it` models. The contextual embedding model uses BERT-style transformer assets bundled with the OS (no extra download); language coverage is much wider. Token-level vectors are averaged in Swift into a single `Array<Float>` of length `contextual_dimension(language)` (typically 512). Returns `[]` on empty text, empty language, unsupported language, or when assets cannot be loaded.
 
 **Apple's sentence embedding language coverage is narrow.** Empirically on macOS 26.4.1 / Apple Silicon, `NLEmbedding.sentenceEmbedding` is non-`nil` only for `en` and `it`; `ja` / `zh-Hans` / `ko` / others return `nil`. The same constraint applies to `wordEmbedding`. If you need sentence embeddings in unsupported languages, consider Apple's `FoundationModels` framework (macOS 26+), a Core ML conversion of a multilingual sentence-transformer, or an external API.
 

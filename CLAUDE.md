@@ -44,6 +44,8 @@ ext/natural_language_mac/Sources/NaturalLanguageMac/NaturalLanguageMac.swift   â
 | `NaturalLanguageMac.tag(text)` | newline-separated `"token\ttag"` | NLTagger with `.lexicalClass` scheme; omits whitespace and punctuation |
 | `NaturalLanguageMac.embed_sentence(text, language)` | `Array<Float>` (`size == embedding_dimension(language)`) or `[]` | `NLEmbedding.sentenceEmbedding(for: NLLanguage(rawValue: language))`. `[]` on empty text / empty language / unsupported language / unshipped model. Apple ships sentence embedding only for `en` / `it` as of macOS 26.4.1 |
 | `NaturalLanguageMac.embedding_dimension(language)` | `Integer` or `0` | Dimension of `NLEmbedding.sentenceEmbedding`. `0` on empty / unsupported / unshipped |
+| `NaturalLanguageMac.embed_contextual(text, language)` | `Array<Float>` (mean-pooled, `size == contextual_dimension`) or `[]` | macOS 14+. `NLContextualEmbedding(language:)` token vectors averaged in Swift. **The only path to Japanese (and other non-en/it) sentence embeddings** in this gem |
+| `NaturalLanguageMac.contextual_dimension(language)` | `Integer` or `0` | macOS 14+. Dimension of `NLContextualEmbedding`. `0` on empty / unsupported |
 
 ## Module boundaries
 

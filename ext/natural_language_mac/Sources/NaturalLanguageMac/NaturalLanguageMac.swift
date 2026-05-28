@@ -60,3 +60,51 @@ func performEmbeddingDimension(language: String) -> String {
     }
     return String(embedding.dimension)
 }
+
+@available(macOS 14, *)
+func performEmbedContextual(text: String, language: String) -> String {
+    if text.isEmpty || language.isEmpty { return "" }
+    let nlLanguage = NLLanguage(rawValue: language)
+    guard let embedding = NLContextualEmbedding(language: nlLanguage) else {
+        return ""
+    }
+    if !embedding.hasAvailableAssets {
+        do {
+            try embedding.load()
+        } catch {
+            return ""
+        }
+    }
+    let result: NLContextualEmbeddingResult
+    do {
+        result = try embedding.embeddingResult(for: text, language: nlLanguage)
+    } catch {
+        return ""
+    }
+
+    let dim = embedding.dimension
+    var sum = [Double](repeating: 0.0, count: dim)
+    var count: Int = 0
+    result.enumerateTokenVectors(in: text.startIndex..<text.endIndex) { vector, _ in
+        if vector.count == dim {
+            for i in 0..<dim {
+                sum[i] += vector[i]
+            }
+            count += 1
+        }
+        return true
+    }
+    if count == 0 { return "" }
+    let mean = sum.map { $0 / Double(count) }
+    return mean.map { String(format: "%.17g", $0) }.joined(separator: "\n")
+}
+
+@available(macOS 14, *)
+func performContextualDimension(language: String) -> String {
+    if language.isEmpty { return "" }
+    let nlLanguage = NLLanguage(rawValue: language)
+    guard let embedding = NLContextualEmbedding(language: nlLanguage) else {
+        return ""
+    }
+    return String(embedding.dimension)
+}
