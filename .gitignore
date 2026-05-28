@@ -20,3 +20,6 @@ ext/**/*-Swift.h
 lib/**/*.bundle
 lib/**/*.bundle.dSYM/
 /tmp/
+
+# Development process docs (specs / plans / handoffs / reviews) — local only
+/docs/superpowers/
