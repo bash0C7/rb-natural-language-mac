@@ -42,6 +42,8 @@ ext/natural_language_mac/Sources/NaturalLanguageMac/NaturalLanguageMac.swift   â
 | `NaturalLanguageMac.detect_language(text)` | BCP-47 tag string (`"ja"`, `"en"`â€¦) or `""` | NLLanguageRecognizer. Most likely language only |
 | `NaturalLanguageMac.tokenize(text)` | newline-separated tokens | NLTokenizer with `.word` unit |
 | `NaturalLanguageMac.tag(text)` | newline-separated `"token\ttag"` | NLTagger with `.lexicalClass` scheme; omits whitespace and punctuation |
+| `NaturalLanguageMac.embed_sentence(text, language)` | `Array<Float>` (`size == embedding_dimension(language)`) or `[]` | `NLEmbedding.sentenceEmbedding(for: NLLanguage(rawValue: language))`. `[]` on empty text / empty language / unsupported language / unshipped model. Apple ships sentence embedding only for `en` / `it` as of macOS 26.4.1 |
+| `NaturalLanguageMac.embedding_dimension(language)` | `Integer` or `0` | Dimension of `NLEmbedding.sentenceEmbedding`. `0` on empty / unsupported / unshipped |
 
 ## Module boundaries
 

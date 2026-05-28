@@ -32,9 +32,19 @@ NaturalLanguageMac.tokenize("Hello world test.")
 
 NaturalLanguageMac.tag("The quick fox jumps.")
 # => "The\tDeterminer\nquick\tAdjective\nfox\tNoun\njumps\tVerb"
+
+NaturalLanguageMac.embedding_dimension("en")
+# => 512   (depends on macOS NLEmbedding version)
+
+NaturalLanguageMac.embed_sentence("Today is a fine day.", "en")
+# => [0.4472, 0.2692, -0.2569, ...]   (Array<Float>, size == embedding_dimension)
 ```
 
-All three methods return a single newline-separated string. `tag` uses tab as the sub-field separator. Whitespace and punctuation are skipped by the tagger. On failure (empty input, OS error) the methods return `""`.
+`detect_language` / `tokenize` / `tag` return a single newline-separated string. `tag` uses tab as the sub-field separator. Whitespace and punctuation are skipped by the tagger. On failure (empty input, OS error) the methods return `""`.
+
+`embed_sentence(text, language)` returns the sentence embedding from `NLEmbedding.sentenceEmbedding(for: NLLanguage(rawValue: language))` as an `Array<Float>`. Returns `[]` on empty text, empty language, unsupported language, or when Apple has not shipped a sentence embedding model for the requested language. `embedding_dimension(language)` returns the embedding dimension as `Integer` (or `0` if unavailable).
+
+**Apple's sentence embedding language coverage is narrow.** Empirically on macOS 26.4.1 / Apple Silicon, `NLEmbedding.sentenceEmbedding` is non-`nil` only for `en` and `it`; `ja` / `zh-Hans` / `ko` / others return `nil`. The same constraint applies to `wordEmbedding`. If you need sentence embeddings in unsupported languages, consider Apple's `FoundationModels` framework (macOS 26+), a Core ML conversion of a multilingual sentence-transformer, or an external API.
 
 Or open an IRB console with the gem preloaded:
 
@@ -61,10 +71,16 @@ This gem takes only string input — there is no file path involved, so there is
 
 ## Reference: Ruby example
 
-`example.rb` at the repo root demonstrates the three methods end-to-end:
+`example.rb` at the repo root demonstrates the three core methods end-to-end:
 
 ```bash
 bundle exec ruby example.rb "The quick brown fox jumps over the lazy dog."
+```
+
+`examples/embed_sentence.rb` demonstrates the sentence-embedding API:
+
+```bash
+bundle exec ruby examples/embed_sentence.rb "Hello world." "en"
 ```
 
 ## Reference: pure Swift sample
