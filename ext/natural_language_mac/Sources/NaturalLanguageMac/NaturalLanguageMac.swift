@@ -39,3 +39,24 @@ func performTag(text: String) -> String {
     }
     return pairs.joined(separator: "\n")
 }
+
+func performEmbedSentence(text: String, language: String) -> String {
+    if text.isEmpty || language.isEmpty { return "" }
+    let nlLanguage = NLLanguage(rawValue: language)
+    guard let embedding = NLEmbedding.sentenceEmbedding(for: nlLanguage) else {
+        return ""
+    }
+    guard let vector = embedding.vector(for: text) else {
+        return ""
+    }
+    return vector.map { String(format: "%.17g", $0) }.joined(separator: "\n")
+}
+
+func performEmbeddingDimension(language: String) -> String {
+    if language.isEmpty { return "" }
+    let nlLanguage = NLLanguage(rawValue: language)
+    guard let embedding = NLEmbedding.sentenceEmbedding(for: nlLanguage) else {
+        return ""
+    }
+    return String(embedding.dimension)
+}
