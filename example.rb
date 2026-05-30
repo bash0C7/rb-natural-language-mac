@@ -16,3 +16,6 @@ puts NaturalLanguageMac.tokenize(text)
 puts
 puts "tags:"
 puts NaturalLanguageMac.tag(text)
+puts
+puts "sentiment: #{NaturalLanguageMac.sentiment_score(text).inspect}"
+puts "embedding_dimension(\"en\"): #{NaturalLanguageMac.embedding_dimension("en")}"
