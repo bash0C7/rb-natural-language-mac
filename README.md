@@ -5,19 +5,26 @@ Ruby binding for Apple's Natural Language framework on macOS / Apple Silicon. Ca
 ## Requirements
 
 - macOS 12+, Apple Silicon
-- Swift 6.3+ (SE-0495 `@c` attribute) for the library build. Install via [swiftly](https://www.swift.org/install/macos/).
-- Ruby 3.2+, Bundler 4.x
+- Swift 6.3+ (SE-0495 `@c` attribute; the hard floor) for the library build. Install via [swiftly](https://www.swift.org/install/macos/).
+- Ruby 3.2+ (gemspec `required_ruby_version`), Bundler 4.x
 - **Xcode Command Line Tools** only if you want to run `examples/natural_language_mac.swift`. The pure-Swift sample must run under `xcrun swift`; swiftly's 6.3 swift binary cannot JIT-link Apple system frameworks (NaturalLanguage) in interpret mode. The library build itself does not need CLT. Install with `xcode-select --install`.
+
+Verified on macOS 26.4.1 / Apple Silicon / Ruby 4.0.3. The lower bounds above are the intended minimums; builds at the floor are not yet verified.
 
 ## Installation
 
-```bash
-bundle add rb-natural-language-mac
-```
+Not yet published. Install from source against a local checkout of its `swift_gem` build dependency:
 
 ```bash
-gem install rb-natural-language-mac
+# alongside this repo, e.g. under ~/dev/src/github.com/bash0C7/
+git clone https://github.com/bash0C7/swift_gem.git
+git clone https://github.com/bash0C7/rb-natural-language-mac.git
+cd rb-natural-language-mac
+bundle install
+bundle exec rake compile
 ```
+
+`Gemfile` references `swift_gem` via `path: "../swift_gem"` until both gems publish. Once published, this becomes a normal `gem "rb-natural-language-mac"` in your Gemfile.
 
 ## Usage
 
@@ -101,7 +108,7 @@ This gem takes only string input — there is no file path involved, so there is
 
 ## Reference: Ruby example
 
-`example.rb` at the repo root demonstrates the three core methods end-to-end:
+`example.rb` at the repo root demonstrates the core methods end-to-end:
 
 ```bash
 bundle exec ruby example.rb "The quick brown fox jumps over the lazy dog."

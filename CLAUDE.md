@@ -2,7 +2,7 @@
 
 ## Position
 
-Ruby native binding for Apple's Natural Language framework on macOS. Sibling of `rb-vision-ocrmac`, built on the same `bash0C7/swift_gem` scaffold. Exposes language detection, tokenization, and linguistic tagging as singleton methods on `NaturalLanguageMac`.
+Ruby native binding for Apple's Natural Language framework on macOS. Sibling of `rb-vision-ocrmac`, built on the same `bash0C7/swift_gem` scaffold. Exposes language detection, tokenization, linguistic tagging, sentiment scoring, and sentence/contextual embeddings as singleton methods on `NaturalLanguageMac`.
 
 ## Core design principles
 
@@ -17,19 +17,19 @@ Ruby native binding for Apple's Natural Language framework on macOS. Sibling of 
 ```
 [caller (Ruby)]
   │
-  │   NaturalLanguageMac.{detect_language,tokenize,tag}(text) → String
+  │   NaturalLanguageMac.<method>(...) → String / Float / Integer / Array<Float>
   ▼
 lib/natural_language_mac.rb            ← requires the ext + module declaration
   │
   ▼
 ext/natural_language_mac/natural_language_mac.c   ← rb_define_singleton_method
   │
-  │   natural_language_mac_{detect_language,tokenize,tag}(c_text)
+  │   natural_language_mac_<method>(c_text, ...)
   ▼
 ext/natural_language_mac/Sources/NaturalLanguageMac/NaturalLanguageMacBridge.swift   ← @c (SE-0495)
   │
   ▼
-ext/natural_language_mac/Sources/NaturalLanguageMac/NaturalLanguageMac.swift   ← NLLanguageRecognizer / NLTokenizer / NLTagger
+ext/natural_language_mac/Sources/NaturalLanguageMac/NaturalLanguageMac.swift   ← NLLanguageRecognizer / NLTokenizer / NLTagger / NLEmbedding / NLContextualEmbedding
   │
   ▼
 [Apple NaturalLanguage framework]
@@ -53,9 +53,9 @@ ext/natural_language_mac/Sources/NaturalLanguageMac/NaturalLanguageMac.swift   �
 | Layer | Responsibility |
 |---|---|
 | `lib/natural_language_mac.rb` | `require_relative` to load the .bundle; host of `module NaturalLanguageMac` |
-| `ext/natural_language_mac/natural_language_mac.c` | `Init_natural_language_mac` exposes the three singleton methods; copies Swift-returned `char*` into a Ruby UTF-8 String, then calls `natural_language_mac_free` |
+| `ext/natural_language_mac/natural_language_mac.c` | `Init_natural_language_mac` exposes the singleton methods; copies Swift-returned `char*` into a Ruby UTF-8 String, then calls `natural_language_mac_free` |
 | `NaturalLanguageMacBridge.swift` | C ABI exports via `@c` (SE-0495). Calls Swift implementations and returns C strings via `strdup` |
-| `NaturalLanguageMac.swift` | Real implementation: `NLLanguageRecognizer.dominantLanguage`, `NLTokenizer(unit:.word)`, `NLTagger(tagSchemes:[.lexicalClass])` |
+| `NaturalLanguageMac.swift` | Real implementation: `NLLanguageRecognizer.dominantLanguage`, `NLTokenizer(unit:.word)`, `NLTagger(tagSchemes:[.lexicalClass])`, `NLTagger(tagSchemes:[.sentimentScore])`, `NLEmbedding.sentenceEmbedding`, `NLContextualEmbedding(language:)` |
 | `ext/natural_language_mac/extconf.rb` | `SwiftGem::Mkmf.create_swift_makefile("natural_language_mac/natural_language_mac", package: "NaturalLanguageMac", source_dir: __dir__)` |
 | `examples/natural_language_mac.swift` | Pure-Swift sample script: `xcrun swift examples/natural_language_mac.swift "<text>"`. Ruby-free, kept as a NaturalLanguage-behavior reference. Must use `xcrun swift` (Xcode toolchain) — swiftly 6.3's interpret mode cannot JIT-link Apple system frameworks |
 | `Rakefile` | `Rake::ExtensionTask("natural_language_mac")` + `task test: :compile`. `task console: :compile` for IRB |
