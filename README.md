@@ -33,6 +33,9 @@ NaturalLanguageMac.tokenize("Hello world test.")
 NaturalLanguageMac.tag("The quick fox jumps.")
 # => "The\tDeterminer\nquick\tAdjective\nfox\tNoun\njumps\tVerb"
 
+NaturalLanguageMac.sentiment_score("I love this. It is wonderful and amazing!")
+# => 1.0   (Float, roughly -1.0..1.0; nil when no model ships for the language)
+
 NaturalLanguageMac.embedding_dimension("en")
 # => 512   (depends on macOS NLEmbedding version)
 
@@ -47,6 +50,25 @@ NaturalLanguageMac.embed_contextual("これは日本語の文章です", "ja")
 ```
 
 `detect_language` / `tokenize` / `tag` return a single newline-separated string. `tag` uses tab as the sub-field separator. Whitespace and punctuation are skipped by the tagger. On failure (empty input, OS error) the methods return `""`.
+
+`sentiment_score(text)` returns a document-level sentiment as a `Float` (roughly `-1.0` for very negative to `+1.0` for very positive) from `NLTagger` with the `.sentimentScore` scheme, using `unit: .paragraph` and the auto-detected language. One text in, one score out — split into paragraphs upstream if you want per-paragraph scores. It returns `nil` (deliberately distinct from a genuine neutral `0.0`) on empty input, or when Apple ships no sentiment model for the detected language.
+
+**`sentiment_score` is English-effective only.** Apple ships the sentiment model for a narrow set of languages; empirically on macOS 26.4.1, `NLTagger.availableTagSchemes(for: .paragraph, language:)` includes `Sentiment` for `en` but **not for `ja`** — Japanese text returns `nil` regardless of `setLanguage`. If you need a score for Japanese (or other unshipped languages), the gem leaves that to the caller, by design (see *Preconditions* below). Two practical workarounds:
+
+1. **Pass English text directly.** If you already have an English rendering, score that.
+2. **Translate first, then score.** Apple's on-device Translation framework is available via the sibling gem [rb-translation-mac](https://github.com/bash0C7/rb-translation-mac) — translate `ja` → `en` and feed the result to `sentiment_score`:
+
+   ```ruby
+   require "natural_language_mac"
+   require "translation_mac"
+
+   ja = "これはとても素晴らしい一日でした。本当に楽しかったです。"
+   en = TranslationMac.translate(ja, from: "ja", to: "en")
+   NaturalLanguageMac.sentiment_score(en.text) if en.success
+   # => 1.0   (en.text was "It was a very wonderful day. It was really fun.")
+   ```
+
+   Translation is on-device, lossy, and adds helper-subprocess latency, so treat the result as a coarse signal. Apple's English sentiment is itself approximate (neutral and matter-of-fact sentences can score noticeably negative), so do **not** build a strict threshold gate on it without validating against your own text — that is the caller's responsibility (see below).
 
 `embed_sentence(text, language)` returns the sentence embedding from `NLEmbedding.sentenceEmbedding(for: NLLanguage(rawValue: language))` as an `Array<Float>`. Returns `[]` on empty text, empty language, unsupported language, or when Apple has not shipped a sentence embedding model for the requested language. `embedding_dimension(language)` returns the embedding dimension as `Integer` (or `0` if unavailable).
 
