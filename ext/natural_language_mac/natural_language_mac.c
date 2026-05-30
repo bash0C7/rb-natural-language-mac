@@ -24,6 +24,18 @@ static VALUE rb_natural_language_mac_tag(VALUE self, VALUE text) {
     return call_swift_string(natural_language_mac_tag, text);
 }
 
+static VALUE rb_natural_language_mac_sentiment_score(VALUE self, VALUE text) {
+    const char *c_text = StringValueCStr(text);
+    char *result = natural_language_mac_sentiment_score(c_text);
+    if (result == NULL || result[0] == '\0') {
+        if (result) natural_language_mac_free(result);
+        return Qnil;
+    }
+    VALUE rb_str = rb_utf8_str_new_cstr(result);
+    natural_language_mac_free(result);
+    return rb_funcall(rb_str, rb_intern("to_f"), 0);
+}
+
 static VALUE rb_natural_language_mac_embed_sentence(VALUE self, VALUE text, VALUE language) {
     const char *c_text = StringValueCStr(text);
     const char *c_language = StringValueCStr(language);
@@ -99,6 +111,7 @@ void Init_natural_language_mac(void) {
     rb_define_singleton_method(module, "detect_language", rb_natural_language_mac_detect_language, 1);
     rb_define_singleton_method(module, "tokenize", rb_natural_language_mac_tokenize, 1);
     rb_define_singleton_method(module, "tag", rb_natural_language_mac_tag, 1);
+    rb_define_singleton_method(module, "sentiment_score", rb_natural_language_mac_sentiment_score, 1);
     rb_define_singleton_method(module, "embed_sentence", rb_natural_language_mac_embed_sentence, 2);
     rb_define_singleton_method(module, "embedding_dimension", rb_natural_language_mac_embedding_dimension, 1);
     rb_define_singleton_method(module, "embed_contextual", rb_natural_language_mac_embed_contextual, 2);

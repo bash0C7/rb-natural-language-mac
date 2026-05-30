@@ -40,6 +40,15 @@ func performTag(text: String) -> String {
     return pairs.joined(separator: "\n")
 }
 
+func performSentimentScore(text: String) -> String {
+    if text.isEmpty { return "" }
+    let tagger = NLTagger(tagSchemes: [.sentimentScore])
+    tagger.string = text
+    let (sentiment, _) = tagger.tag(at: text.startIndex, unit: .paragraph, scheme: .sentimentScore)
+    guard let raw = sentiment?.rawValue, let score = Double(raw) else { return "" }
+    return String(format: "%.17g", score)
+}
+
 func performEmbedSentence(text: String, language: String) -> String {
     if text.isEmpty || language.isEmpty { return "" }
     let nlLanguage = NLLanguage(rawValue: language)

@@ -19,6 +19,12 @@ public func natural_language_mac_tag(_ text: UnsafePointer<CChar>) -> UnsafeMuta
 }
 
 @c
+public func natural_language_mac_sentiment_score(_ text: UnsafePointer<CChar>) -> UnsafeMutablePointer<CChar> {
+    let s = String(cString: text)
+    return strdup(performSentimentScore(text: s))!
+}
+
+@c
 public func natural_language_mac_embed_sentence(_ text: UnsafePointer<CChar>, _ language: UnsafePointer<CChar>) -> UnsafeMutablePointer<CChar> {
     let t = String(cString: text)
     let l = String(cString: language)
