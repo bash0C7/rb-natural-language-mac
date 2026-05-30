@@ -23,3 +23,6 @@ lib/**/*.bundle.dSYM/
 
 # Development process docs (specs / plans / handoffs / reviews) — local only
 /docs/superpowers/
+
+# Claude Code runtime scheduler lock (ephemeral: live PID + session id) — keep rest of .claude/ committable
+.claude/scheduled_tasks.lock
