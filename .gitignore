@@ -4,25 +4,18 @@
 /doc/
 /pkg/
 /spec/reports/
-.bundle/
+.bundle/*
+!.bundle/config
 vendor/bundle/
 Gemfile.lock
 *.gem
-
-# Built native extension artifacts
 ext/**/.build/
 ext/**/Makefile
 ext/**/*.o
 ext/**/*.bundle
 ext/**/*.bundle.dSYM/
 ext/**/mkmf.log
-ext/**/*-Swift.h
 lib/**/*.bundle
 lib/**/*.bundle.dSYM/
 /tmp/
-
-# Development process docs (specs / plans / handoffs / reviews) — local only
 /docs/superpowers/
-
-# Claude Code runtime scheduler lock (ephemeral: live PID + session id) — keep rest of .claude/ committable
-.claude/scheduled_tasks.lock

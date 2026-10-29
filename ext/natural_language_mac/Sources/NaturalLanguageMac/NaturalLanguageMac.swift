@@ -1,46 +1,63 @@
 import Foundation
 import NaturalLanguage
 
-func performDetectLanguage(text: String) -> String {
+private func formatVector(_ vector: [Double]) -> String {
+    vector.map { String(format: "%.17g", $0) }.joined(separator: "\n")
+}
+
+/// Detects the dominant language of `text` with `NLLanguageRecognizer`.
+///
+/// ``cDetectLanguage(_:)`` exposes this function to C.
+///
+/// - Parameter text: The text to analyze.
+/// - Returns: The BCP-47 tag of the dominant language, or an empty string when `text` is empty or no language is recognized.
+func detectLanguage(text: String) -> String {
     if text.isEmpty { return "" }
     let recognizer = NLLanguageRecognizer()
     recognizer.processString(text)
-    guard let lang = recognizer.dominantLanguage else { return "" }
-    return lang.rawValue
+    return recognizer.dominantLanguage?.rawValue ?? ""
 }
 
-func performTokenize(text: String) -> String {
+/// Splits `text` into words with `NLTokenizer`.
+///
+/// ``cTokenize(_:)`` exposes this function to C.
+///
+/// - Parameter text: The text to tokenize.
+/// - Returns: The word tokens joined by newlines, or an empty string when `text` is empty.
+func tokenize(text: String) -> String {
     if text.isEmpty { return "" }
     let tokenizer = NLTokenizer(unit: .word)
     tokenizer.string = text
-    var tokens: [String] = []
-    tokenizer.enumerateTokens(in: text.startIndex..<text.endIndex) { range, _ in
-        tokens.append(String(text[range]))
-        return true
-    }
-    return tokens.joined(separator: "\n")
+    return tokenizer.tokens(for: text.startIndex..<text.endIndex)
+        .map { String(text[$0]) }
+        .joined(separator: "\n")
 }
 
-func performTag(text: String) -> String {
+/// Tags each word of `text` with its lexical class using `NLTagger`.
+///
+/// Whitespace and punctuation are omitted. ``cTag(_:)`` exposes this function to C.
+///
+/// - Parameter text: The text to tag.
+/// - Returns: One `token\ttag` line per word, or an empty string when `text` is empty.
+func tag(text: String) -> String {
     if text.isEmpty { return "" }
     let tagger = NLTagger(tagSchemes: [.lexicalClass])
     tagger.string = text
-    var pairs: [String] = []
-    let options: NLTagger.Options = [.omitWhitespace, .omitPunctuation]
-    tagger.enumerateTags(in: text.startIndex..<text.endIndex,
-                         unit: .word,
-                         scheme: .lexicalClass,
-                         options: options) { tag, range in
-        if let tag = tag {
-            let token = String(text[range])
-            pairs.append("\(token)\t\(tag.rawValue)")
-        }
-        return true
-    }
-    return pairs.joined(separator: "\n")
+    return tagger.tags(in: text.startIndex..<text.endIndex,
+                       unit: .word,
+                       scheme: .lexicalClass,
+                       options: [.omitWhitespace, .omitPunctuation])
+        .compactMap { tag, range in tag.map { "\(text[range])\t\($0.rawValue)" } }
+        .joined(separator: "\n")
 }
 
-func performSentimentScore(text: String) -> String {
+/// Scores the sentiment of `text` as one paragraph with the `.sentimentScore` scheme of `NLTagger`.
+///
+/// The language is detected automatically. ``cSentimentScore(_:)`` exposes this function to C.
+///
+/// - Parameter text: The text to score.
+/// - Returns: The score, roughly from `-1.0` to `1.0`, or an empty string when `text` is empty or no sentiment model ships for the detected language.
+func sentimentScore(text: String) -> String {
     if text.isEmpty { return "" }
     let tagger = NLTagger(tagSchemes: [.sentimentScore])
     tagger.string = text
@@ -49,71 +66,77 @@ func performSentimentScore(text: String) -> String {
     return String(format: "%.17g", score)
 }
 
-func performEmbedSentence(text: String, language: String) -> String {
+/// Computes the sentence embedding of `text` with `NLEmbedding.sentenceEmbedding(for:)`.
+///
+/// ``cEmbedSentence(_:_:)`` exposes this function to C.
+///
+/// - Parameters:
+///   - text: The sentence to embed.
+///   - language: The BCP-47 tag of the embedding language.
+/// - Returns: The vector components joined by newlines, or an empty string when an argument is empty or no sentence embedding ships for `language`.
+func embedSentence(text: String, language: String) -> String {
     if text.isEmpty || language.isEmpty { return "" }
-    let nlLanguage = NLLanguage(rawValue: language)
-    guard let embedding = NLEmbedding.sentenceEmbedding(for: nlLanguage) else {
+    guard let vector = NLEmbedding.sentenceEmbedding(for: NLLanguage(rawValue: language))?.vector(for: text) else {
         return ""
     }
-    guard let vector = embedding.vector(for: text) else {
-        return ""
-    }
-    return vector.map { String(format: "%.17g", $0) }.joined(separator: "\n")
+    return formatVector(vector)
 }
 
-func performEmbeddingDimension(language: String) -> String {
+/// Returns the dimension of `NLEmbedding.sentenceEmbedding(for:)` for `language`.
+///
+/// ``cEmbeddingDimension(_:)`` exposes this function to C.
+///
+/// - Parameter language: The BCP-47 tag of the embedding language.
+/// - Returns: The dimension in decimal, or an empty string when `language` is empty or no sentence embedding ships for it.
+func embeddingDimension(language: String) -> String {
     if language.isEmpty { return "" }
-    let nlLanguage = NLLanguage(rawValue: language)
-    guard let embedding = NLEmbedding.sentenceEmbedding(for: nlLanguage) else {
-        return ""
-    }
+    guard let embedding = NLEmbedding.sentenceEmbedding(for: NLLanguage(rawValue: language)) else { return "" }
     return String(embedding.dimension)
 }
 
-@available(macOS 14, *)
-func performEmbedContextual(text: String, language: String) -> String {
+/// Computes a sentence vector of `text` by mean-pooling the token vectors of `NLContextualEmbedding`.
+///
+/// ``cEmbedContextual(_:_:)`` exposes this function to C.
+///
+/// - Parameters:
+///   - text: The sentence to embed.
+///   - language: The BCP-47 tag of the embedding language.
+/// - Returns: The mean vector components joined by newlines, or an empty string when an argument is empty, no contextual embedding supports `language`, or its assets cannot be loaded.
+func embedContextual(text: String, language: String) -> String {
     if text.isEmpty || language.isEmpty { return "" }
     let nlLanguage = NLLanguage(rawValue: language)
-    guard let embedding = NLContextualEmbedding(language: nlLanguage) else {
-        return ""
-    }
-    if !embedding.hasAvailableAssets {
-        do {
-            try embedding.load()
-        } catch {
-            return ""
-        }
-    }
+    guard let embedding = NLContextualEmbedding(language: nlLanguage) else { return "" }
     let result: NLContextualEmbeddingResult
     do {
+        try embedding.load()
         result = try embedding.embeddingResult(for: text, language: nlLanguage)
     } catch {
         return ""
     }
 
-    let dim = embedding.dimension
-    var sum = [Double](repeating: 0.0, count: dim)
-    var count: Int = 0
+    var sum = [Double](repeating: 0, count: embedding.dimension)
+    var count = 0
     result.enumerateTokenVectors(in: text.startIndex..<text.endIndex) { vector, _ in
-        if vector.count == dim {
-            for i in 0..<dim {
-                sum[i] += vector[i]
+        if vector.count == sum.count {
+            for (i, value) in vector.enumerated() {
+                sum[i] += value
             }
             count += 1
         }
         return true
     }
     if count == 0 { return "" }
-    let mean = sum.map { $0 / Double(count) }
-    return mean.map { String(format: "%.17g", $0) }.joined(separator: "\n")
+    return formatVector(sum.map { $0 / Double(count) })
 }
 
-@available(macOS 14, *)
-func performContextualDimension(language: String) -> String {
+/// Returns the dimension of `NLContextualEmbedding` for `language`.
+///
+/// ``cContextualDimension(_:)`` exposes this function to C.
+///
+/// - Parameter language: The BCP-47 tag of the embedding language.
+/// - Returns: The dimension in decimal, or an empty string when `language` is empty or no contextual embedding supports it.
+func contextualDimension(language: String) -> String {
     if language.isEmpty { return "" }
-    let nlLanguage = NLLanguage(rawValue: language)
-    guard let embedding = NLContextualEmbedding(language: nlLanguage) else {
-        return ""
-    }
+    guard let embedding = NLContextualEmbedding(language: NLLanguage(rawValue: language)) else { return "" }
     return String(embedding.dimension)
 }

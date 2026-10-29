@@ -1,109 +1,59 @@
 #include <ruby.h>
 #include "NaturalLanguageMac-Swift.h"
 
-static VALUE call_swift_string(char *(*fn)(const char *), VALUE input) {
-    const char *c_input = StringValueCStr(input);
-    char *result = fn(c_input);
-    if (result == NULL) {
-        return rb_utf8_str_new_cstr("");
-    }
+static VALUE take_string(char *result) {
     VALUE rb_result = rb_utf8_str_new_cstr(result);
     natural_language_mac_free(result);
     return rb_result;
 }
 
+static VALUE to_float_array(VALUE lines) {
+    VALUE split = rb_funcall(lines, rb_intern("split"), 1, rb_str_new_cstr("\n"));
+    long n = RARRAY_LEN(split);
+    VALUE ary = rb_ary_new_capa(n);
+    for (long i = 0; i < n; i++) {
+        rb_ary_push(ary, rb_funcall(RARRAY_AREF(split, i), rb_intern("to_f"), 0));
+    }
+    return ary;
+}
+
 static VALUE rb_natural_language_mac_detect_language(VALUE self, VALUE text) {
-    return call_swift_string(natural_language_mac_detect_language, text);
+    return take_string(natural_language_mac_detect_language(StringValueCStr(text)));
 }
 
 static VALUE rb_natural_language_mac_tokenize(VALUE self, VALUE text) {
-    return call_swift_string(natural_language_mac_tokenize, text);
+    return take_string(natural_language_mac_tokenize(StringValueCStr(text)));
 }
 
 static VALUE rb_natural_language_mac_tag(VALUE self, VALUE text) {
-    return call_swift_string(natural_language_mac_tag, text);
+    return take_string(natural_language_mac_tag(StringValueCStr(text)));
 }
 
 static VALUE rb_natural_language_mac_sentiment_score(VALUE self, VALUE text) {
-    const char *c_text = StringValueCStr(text);
-    char *result = natural_language_mac_sentiment_score(c_text);
-    if (result == NULL || result[0] == '\0') {
-        if (result) natural_language_mac_free(result);
-        return Qnil;
-    }
-    VALUE rb_str = rb_utf8_str_new_cstr(result);
-    natural_language_mac_free(result);
-    return rb_funcall(rb_str, rb_intern("to_f"), 0);
+    VALUE score = take_string(natural_language_mac_sentiment_score(StringValueCStr(text)));
+    return RSTRING_LEN(score) == 0 ? Qnil : rb_funcall(score, rb_intern("to_f"), 0);
 }
 
 static VALUE rb_natural_language_mac_embed_sentence(VALUE self, VALUE text, VALUE language) {
     const char *c_text = StringValueCStr(text);
     const char *c_language = StringValueCStr(language);
-    char *result = natural_language_mac_embed_sentence(c_text, c_language);
-    if (result == NULL || result[0] == '\0') {
-        if (result) natural_language_mac_free(result);
-        return rb_ary_new();
-    }
-    VALUE rb_str = rb_utf8_str_new_cstr(result);
-    natural_language_mac_free(result);
-
-    VALUE separator = rb_str_new_cstr("\n");
-    VALUE split = rb_funcall(rb_str, rb_intern("split"), 1, separator);
-    long n = RARRAY_LEN(split);
-    VALUE ary = rb_ary_new_capa(n);
-    for (long i = 0; i < n; i++) {
-        VALUE elem = RARRAY_AREF(split, i);
-        VALUE flt = rb_funcall(elem, rb_intern("to_f"), 0);
-        rb_ary_push(ary, flt);
-    }
-    return ary;
+    return to_float_array(take_string(natural_language_mac_embed_sentence(c_text, c_language)));
 }
 
 static VALUE rb_natural_language_mac_embedding_dimension(VALUE self, VALUE language) {
-    const char *c_language = StringValueCStr(language);
-    char *result = natural_language_mac_embedding_dimension(c_language);
-    if (result == NULL || result[0] == '\0') {
-        if (result) natural_language_mac_free(result);
-        return INT2NUM(0);
-    }
-    VALUE rb_str = rb_utf8_str_new_cstr(result);
-    natural_language_mac_free(result);
-    return rb_funcall(rb_str, rb_intern("to_i"), 0);
+    VALUE dimension = take_string(natural_language_mac_embedding_dimension(StringValueCStr(language)));
+    return rb_funcall(dimension, rb_intern("to_i"), 0);
 }
 
 static VALUE rb_natural_language_mac_embed_contextual(VALUE self, VALUE text, VALUE language) {
     const char *c_text = StringValueCStr(text);
     const char *c_language = StringValueCStr(language);
-    char *result = natural_language_mac_embed_contextual(c_text, c_language);
-    if (result == NULL || result[0] == '\0') {
-        if (result) natural_language_mac_free(result);
-        return rb_ary_new();
-    }
-    VALUE rb_str = rb_utf8_str_new_cstr(result);
-    natural_language_mac_free(result);
-
-    VALUE separator = rb_str_new_cstr("\n");
-    VALUE split = rb_funcall(rb_str, rb_intern("split"), 1, separator);
-    long n = RARRAY_LEN(split);
-    VALUE ary = rb_ary_new_capa(n);
-    for (long i = 0; i < n; i++) {
-        VALUE elem = RARRAY_AREF(split, i);
-        VALUE flt = rb_funcall(elem, rb_intern("to_f"), 0);
-        rb_ary_push(ary, flt);
-    }
-    return ary;
+    return to_float_array(take_string(natural_language_mac_embed_contextual(c_text, c_language)));
 }
 
 static VALUE rb_natural_language_mac_contextual_dimension(VALUE self, VALUE language) {
-    const char *c_language = StringValueCStr(language);
-    char *result = natural_language_mac_contextual_dimension(c_language);
-    if (result == NULL || result[0] == '\0') {
-        if (result) natural_language_mac_free(result);
-        return INT2NUM(0);
-    }
-    VALUE rb_str = rb_utf8_str_new_cstr(result);
-    natural_language_mac_free(result);
-    return rb_funcall(rb_str, rb_intern("to_i"), 0);
+    VALUE dimension = take_string(natural_language_mac_contextual_dimension(StringValueCStr(language)));
+    return rb_funcall(dimension, rb_intern("to_i"), 0);
 }
 
 void Init_natural_language_mac(void) {
