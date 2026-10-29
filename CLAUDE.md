@@ -2,15 +2,15 @@
 
 ## Position
 
-Ruby native binding for Apple's Natural Language framework on macOS. Sibling of `rb-vision-ocrmac`, built on the same `bash0C7/swift_gem` scaffold. Exposes language detection, tokenization, linguistic tagging, sentiment scoring, and sentence/contextual embeddings as singleton methods on `NaturalLanguageMac`.
+Ruby native binding for Apple's Natural Language framework on macOS, built on the `bash0C7/swift_gem` scaffold. Exposes language detection, tokenization, linguistic tagging, sentiment scoring, and sentence/contextual embeddings as singleton methods on `NaturalLanguageMac`. Sibling of `rb-vision-mac`.
 
 ## Core design principles
 
-1. Thin wrapper. Pass-through Natural Language API. One text → one string (newline separator, optional `\t` for sub-fields). Option expansion (custom NLEmbedding, NLModel, sentiment, etc.) is intentionally not added until needed.
-2. Fixed defaults: tokenizer unit `.word`; tagger scheme `.lexicalClass`. Changes go through new API methods; never break existing behavior.
-3. Synchronous calls. NaturalLanguage APIs are not async, so no semaphore/timeout. Failure (empty input, OS error, framework returned nothing) → empty string. Does not raise exceptions. (Unlike sibling path-taking gems, there is no file involved here, so no `Errno::ENOENT` surface.)
-4. C bridge string handoff. Swift allocates with `strdup`, C frees via `natural_language_mac_free`. Bridge function signatures fixed at `UnsafePointer<CChar>` ↔ `UnsafeMutablePointer<CChar>`.
-5. Scaffold parity. `swift_gem new rb-natural-language-mac` produces a skeleton whose only diffs against this repo are the implementation body, fixtures, and build artifacts.
+1. Thin wrapper. Pass-through Natural Language API. Text results are one newline-separated string, with `\t` for sub-fields. Option expansion (custom NLEmbedding, NLModel, etc.) waits until needed.
+2. Fixed defaults: tokenizer unit `.word`; tagger scheme `.lexicalClass`; sentiment `unit: .paragraph` with the detected language. Changes go through new API methods; existing behavior stays.
+3. Synchronous calls. The NaturalLanguage APIs used here are synchronous, so there is no semaphore or timeout. Failure (empty input, framework returned nothing, no model for the language) → empty value (`""`, `nil`, `[]`, `0`). No exceptions besides Ruby's own `TypeError` for non-string arguments.
+4. C bridge string handoff. Each method has its own `@c(<c_name>)` (SE-0495) function and a single shared `cFree` exported as `natural_language_mac_free`. Signatures are fixed at `UnsafePointer<CChar>` → `UnsafeMutablePointer<CChar>`. The C side converts the string to `Float` / `Integer` / `Array<Float>` where the method returns one.
+5. Scaffold parity. `bundle exec rake "new[rb-natural-language-mac,<dir>]"` in swift_gem produces a skeleton whose only diffs against this repo are the implementation body, `sig/` contents, example scripts, tests, docs, gemspec summary and description, and build artifacts.
 
 ## Architecture
 
@@ -22,11 +22,11 @@ Ruby native binding for Apple's Natural Language framework on macOS. Sibling of 
 lib/natural_language_mac.rb            ← requires the ext + module declaration
   │
   ▼
-ext/natural_language_mac/natural_language_mac.c   ← rb_define_singleton_method
+ext/natural_language_mac/natural_language_mac.c   ← rb_define_singleton_method, string → Ruby value
   │
   │   natural_language_mac_<method>(c_text, ...)
   ▼
-ext/natural_language_mac/Sources/NaturalLanguageMac/NaturalLanguageMacBridge.swift   ← @c (SE-0495)
+ext/natural_language_mac/Sources/NaturalLanguageMac/NaturalLanguageMacBridge.swift   ← @c(name) (SE-0495)
   │
   ▼
 ext/natural_language_mac/Sources/NaturalLanguageMac/NaturalLanguageMac.swift   ← NLLanguageRecognizer / NLTokenizer / NLTagger / NLEmbedding / NLContextualEmbedding
@@ -39,53 +39,59 @@ ext/natural_language_mac/Sources/NaturalLanguageMac/NaturalLanguageMac.swift   �
 
 | Method | Returns | Notes |
 |---|---|---|
-| `NaturalLanguageMac.detect_language(text)` | BCP-47 tag string (`"ja"`, `"en"`…) or `""` | NLLanguageRecognizer. Most likely language only |
-| `NaturalLanguageMac.tokenize(text)` | newline-separated tokens | NLTokenizer with `.word` unit |
-| `NaturalLanguageMac.tag(text)` | newline-separated `"token\ttag"` | NLTagger with `.lexicalClass` scheme; omits whitespace and punctuation |
-| `NaturalLanguageMac.sentiment_score(text)` | `Float` (roughly `-1.0..1.0`) or `nil` | NLTagger with `.sentimentScore` scheme, `unit: .paragraph`, auto-detected language. One text → one score (caller splits paragraphs). `nil` on empty text, or when no sentiment model ships for the detected language — **Japanese returns `nil` on macOS 26.4.1** (verified by test omission). `0.0` is a valid neutral score, deliberately distinct from `nil` failure |
-| `NaturalLanguageMac.embed_sentence(text, language)` | `Array<Float>` (`size == embedding_dimension(language)`) or `[]` | `NLEmbedding.sentenceEmbedding(for: NLLanguage(rawValue: language))`. `[]` on empty text / empty language / unsupported language / unshipped model. Apple ships sentence embedding only for `en` / `it` as of macOS 26.4.1 |
-| `NaturalLanguageMac.embedding_dimension(language)` | `Integer` or `0` | Dimension of `NLEmbedding.sentenceEmbedding`. `0` on empty / unsupported / unshipped |
-| `NaturalLanguageMac.embed_contextual(text, language)` | `Array<Float>` (mean-pooled, `size == contextual_dimension`) or `[]` | macOS 14+. `NLContextualEmbedding(language:)` token vectors averaged in Swift. **The only path to Japanese (and other non-en/it) sentence embeddings** in this gem |
-| `NaturalLanguageMac.contextual_dimension(language)` | `Integer` or `0` | macOS 14+. Dimension of `NLContextualEmbedding`. `0` on empty / unsupported |
+| `NaturalLanguageMac.detect_language(text)` | BCP-47 tag string (`"ja"`, `"en"`…) or `""` | `NLLanguageRecognizer.dominantLanguage` |
+| `NaturalLanguageMac.tokenize(text)` | newline-separated tokens | `NLTokenizer(unit: .word)` |
+| `NaturalLanguageMac.tag(text)` | newline-separated `"token\ttag"` | `NLTagger` with `.lexicalClass`; omits whitespace and punctuation |
+| `NaturalLanguageMac.sentiment_score(text)` | `Float` (roughly `-1.0..1.0`) or `nil` | `NLTagger` with `.sentimentScore`, `unit: .paragraph`. `nil` on empty text or when no sentiment model ships for the detected language (Japanese has none). `0.0` is a valid neutral score |
+| `NaturalLanguageMac.embed_sentence(text, language)` | `Array<Float>` (`size == embedding_dimension(language)`) or `[]` | `NLEmbedding.sentenceEmbedding(for:)`. Ships for Latin-script languages such as `en`, `fr`, `de`, `es`, `it`; not for `ja`, `zh-Hans`, `ko` |
+| `NaturalLanguageMac.embedding_dimension(language)` | `Integer` or `0` | Dimension of `NLEmbedding.sentenceEmbedding(for:)` |
+| `NaturalLanguageMac.embed_contextual(text, language)` | `Array<Float>` (mean-pooled, `size == contextual_dimension(language)`) or `[]` | `NLContextualEmbedding(language:)` token vectors averaged in Swift. The path to Japanese, Chinese, and Korean sentence vectors. `[]` when the OTA model assets are not on the device; the gem does not request them |
+| `NaturalLanguageMac.contextual_dimension(language)` | `Integer` or `0` | Dimension of `NLContextualEmbedding(language:)` |
+
+Signatures and their documentation live in `sig/natural_language_mac.rbs`.
 
 ## Module boundaries
 
 | Layer | Responsibility |
 |---|---|
 | `lib/natural_language_mac.rb` | `require_relative` to load the .bundle; host of `module NaturalLanguageMac` |
-| `ext/natural_language_mac/natural_language_mac.c` | `Init_natural_language_mac` exposes the singleton methods; copies Swift-returned `char*` into a Ruby UTF-8 String, then calls `natural_language_mac_free` |
-| `NaturalLanguageMacBridge.swift` | C ABI exports via `@c` (SE-0495). Calls Swift implementations and returns C strings via `strdup` |
-| `NaturalLanguageMac.swift` | Real implementation: `NLLanguageRecognizer.dominantLanguage`, `NLTokenizer(unit:.word)`, `NLTagger(tagSchemes:[.lexicalClass])`, `NLTagger(tagSchemes:[.sentimentScore])`, `NLEmbedding.sentenceEmbedding`, `NLContextualEmbedding(language:)` |
-| `ext/natural_language_mac/extconf.rb` | `SwiftGem::Mkmf.create_swift_makefile("natural_language_mac/natural_language_mac", package: "NaturalLanguageMac", source_dir: __dir__)` |
-| `examples/natural_language_mac.swift` | Pure-Swift sample script: `xcrun swift examples/natural_language_mac.swift "<text>"`. Ruby-free, kept as a NaturalLanguage-behavior reference. Must use `xcrun swift` (Xcode toolchain) — swiftly 6.3's interpret mode cannot JIT-link Apple system frameworks |
-| `Rakefile` | `Rake::ExtensionTask("natural_language_mac")` + `task test: :compile`. `task console: :compile` for IRB |
+| `sig/natural_language_mac.rbs` | RBS for `VERSION`, `Error`, and every singleton method |
+| `ext/natural_language_mac/natural_language_mac.c` | `Init_natural_language_mac` exposes the singleton methods; copies the Swift-returned `char*` into a Ruby UTF-8 String, calls `natural_language_mac_free`, then converts to `Float` / `Integer` / `Array<Float>` where needed |
+| `NaturalLanguageMacBridge.swift` | C ABI exports via `@c(name)`. Calls the Swift implementations and returns C strings via `strdup` |
+| `NaturalLanguageMac.swift` | Real implementation over `NLLanguageRecognizer`, `NLTokenizer`, `NLTagger`, `NLEmbedding`, `NLContextualEmbedding` |
+| `ext/natural_language_mac/extconf.rb` | `require_relative "swift_mkmf"` + `SwiftGem::Mkmf.create_swift_makefile("natural_language_mac/natural_language_mac", package: "NaturalLanguageMac", source_dir: __dir__)` |
+| `ext/natural_language_mac/swift_mkmf.rb` | Vendored copy of swift_gem's `lib/swift_gem/mkmf.rb`, kept identical |
+| `examples/natural_language_mac.swift` | Ruby-free NaturalLanguage sample: `xcrun swift examples/natural_language_mac.swift "<text>"` |
+| `example.rb`, `examples/*.rb` | Ruby samples: core methods, sentence embedding, sentiment with the translation workaround |
+| `Rakefile` | `task :swift` + `task compile: :swift` before `Rake::ExtensionTask("natural_language_mac")`; `task :rbs`; `task test: %i[rbs compile]`; `task console: :compile` |
 
 ## Build flow
 
-`bundle exec rake test` in one shot: same as `rb-vision-ocrmac`. See its CLAUDE.md and `swift_gem`'s CLAUDE.md.
+`bundle exec rake test` validates the RBS, builds, and tests in one shot. `xcrun swift build -c release --package-path ext/natural_language_mac` writes `NaturalLanguageMac-Swift.h` under `ext/natural_language_mac/.build/out/Intermediates.noindex/GeneratedModuleMaps/` (added with `-I`) and the dylib under `ext/natural_language_mac/.build/release`.
 
 ## Usage / why no CLI
 
-Library only — same rationale as `rb-vision-ocrmac`. Interactive checks via `bundle exec rake console`. `examples/natural_language_mac.swift` for pure-Swift Ruby-free verification of NaturalLanguage behavior.
+Library only, same as `rb-vision-mac`. Interactive checks via `bundle exec rake console`.
 
 ## TDD discipline
 
-t-wada style RED → GREEN → REFACTOR independent commits. test-unit. Inline-string fixtures (no binary fixture file needed).
+t-wada style RED → GREEN → REFACTOR independent commits. test-unit. Inline-string fixtures. Tests call the real framework; only the contextual-embedding tests omit themselves when the model assets are not on the device.
 
 ## Related projects
 
 - `~/dev/src/github.com/bash0C7/swift_gem` — scaffold/Mkmf framework
-- `~/dev/src/github.com/bash0C7/rb-vision-ocrmac` — sibling reference implementation
+- `~/dev/src/github.com/bash0C7/rb-vision-mac` — sibling built on the same scaffold
+- `~/dev/src/github.com/bash0C7/rb-translation-mac` — used by `examples/sentiment_score.rb` for the Japanese sentiment workaround
 
 ## Environment requirements
 
-macOS 12+, Apple Silicon, Swift 6.3+ (SE-0495 `@c` requires 6.3; install via [swiftly](https://www.swift.org/install/macos/)), Ruby 3.2+, bundler 4.x, rake-compiler 1.2+. `Gemfile` references swift_gem via `path: "../swift_gem"` until publish. `Gemfile.lock` not git-tracked.
-
-Xcode Command Line Tools required only for running `examples/natural_language_mac.swift` via `xcrun swift` — swiftly's 6.3 swift binary has broken Apple-framework JIT linkage in interpret mode (verified across the family: SDKROOT, -F, -Xlinker, -sdk all fail). The library build itself does not need CLT. example.swift does not use SE-0495 `@c`, so CLT's older swift (6.2.4) suffices. Install with `xcode-select --install`.
+macOS 27+, Apple Silicon, Xcode 27 (Swift 6.4, builds run `xcrun swift`), Ruby 4.0+, bundler 4.x, rake-compiler 1.2+. `Gemfile.lock` is not git-tracked.
 
 ## Prohibitions
 
 - No Python source
+- No code comments. Swift is documented with DocC (`///`, `- Parameter`, `- Returns`, ``` ``symbol`` ``` links); Ruby is documented with `#` comments above declarations in `sig/natural_language_mac.rbs`. History goes in commit messages
+- Do not hand-edit `ext/natural_language_mac/swift_mkmf.rb`; re-copy it from swift_gem
 - Do not git-track `Gemfile.lock`
 - Do not add caching, normalization, or post-processing of NL results — leave that to callers
 - Do not promise thread safety for concurrent calls — add a lock if needed
