@@ -1,6 +1,6 @@
 import Foundation
 
-/// Calls ``detectLanguage(text:)`` from C as `natural_language_mac_detect_language`.
+/// Calls `detectLanguage(text:)` from C as `natural_language_mac_detect_language`.
 ///
 /// The returned buffer is allocated with `strdup`. Release it with ``cFree(_:)``.
 ///
@@ -11,7 +11,7 @@ public func cDetectLanguage(_ text: UnsafePointer<CChar>) -> UnsafeMutablePointe
     strdup(detectLanguage(text: String(cString: text)))!
 }
 
-/// Calls ``tokenize(text:)`` from C as `natural_language_mac_tokenize`.
+/// Calls `tokenize(text:)` from C as `natural_language_mac_tokenize`.
 ///
 /// The returned buffer is allocated with `strdup`. Release it with ``cFree(_:)``.
 ///
@@ -22,7 +22,7 @@ public func cTokenize(_ text: UnsafePointer<CChar>) -> UnsafeMutablePointer<CCha
     strdup(tokenize(text: String(cString: text)))!
 }
 
-/// Calls ``tag(text:)`` from C as `natural_language_mac_tag`.
+/// Calls `tag(text:)` from C as `natural_language_mac_tag`.
 ///
 /// The returned buffer is allocated with `strdup`. Release it with ``cFree(_:)``.
 ///
@@ -33,7 +33,7 @@ public func cTag(_ text: UnsafePointer<CChar>) -> UnsafeMutablePointer<CChar> {
     strdup(tag(text: String(cString: text)))!
 }
 
-/// Calls ``sentimentScore(text:)`` from C as `natural_language_mac_sentiment_score`.
+/// Calls `sentimentScore(text:)` from C as `natural_language_mac_sentiment_score`.
 ///
 /// The returned buffer is allocated with `strdup`. Release it with ``cFree(_:)``.
 ///
@@ -44,7 +44,7 @@ public func cSentimentScore(_ text: UnsafePointer<CChar>) -> UnsafeMutablePointe
     strdup(sentimentScore(text: String(cString: text)))!
 }
 
-/// Calls ``embedSentence(text:language:)`` from C as `natural_language_mac_embed_sentence`.
+/// Calls `embedSentence(text:language:)` from C as `natural_language_mac_embed_sentence`.
 ///
 /// The returned buffer is allocated with `strdup`. Release it with ``cFree(_:)``.
 ///
@@ -57,7 +57,7 @@ public func cEmbedSentence(_ text: UnsafePointer<CChar>, _ language: UnsafePoint
     strdup(embedSentence(text: String(cString: text), language: String(cString: language)))!
 }
 
-/// Calls ``embeddingDimension(language:)`` from C as `natural_language_mac_embedding_dimension`.
+/// Calls `embeddingDimension(language:)` from C as `natural_language_mac_embedding_dimension`.
 ///
 /// The returned buffer is allocated with `strdup`. Release it with ``cFree(_:)``.
 ///
@@ -68,7 +68,7 @@ public func cEmbeddingDimension(_ language: UnsafePointer<CChar>) -> UnsafeMutab
     strdup(embeddingDimension(language: String(cString: language)))!
 }
 
-/// Calls ``embedContextual(text:language:)`` from C as `natural_language_mac_embed_contextual`.
+/// Calls `embedContextual(text:language:)` from C as `natural_language_mac_embed_contextual`.
 ///
 /// The returned buffer is allocated with `strdup`. Release it with ``cFree(_:)``.
 ///
@@ -81,7 +81,7 @@ public func cEmbedContextual(_ text: UnsafePointer<CChar>, _ language: UnsafePoi
     strdup(embedContextual(text: String(cString: text), language: String(cString: language)))!
 }
 
-/// Calls ``contextualDimension(language:)`` from C as `natural_language_mac_contextual_dimension`.
+/// Calls `contextualDimension(language:)` from C as `natural_language_mac_contextual_dimension`.
 ///
 /// The returned buffer is allocated with `strdup`. Release it with ``cFree(_:)``.
 ///
