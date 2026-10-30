@@ -1,11 +1,5 @@
 # frozen_string_literal: true
 
-# Run with:
-#   bundle exec ruby examples/embed_sentence.rb "<sentence>" "<language>"
-#
-# Defaults to English (Apple ships sentence embedding only for en/it
-# on macOS 26.4.1; other languages return [] / 0).
-
 $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 require "natural_language_mac"
 
@@ -16,7 +10,7 @@ dim = NaturalLanguageMac.embedding_dimension(language)
 puts "Dimension for '#{language}': #{dim}"
 if dim.zero?
   puts "No sentence embedding model is available for '#{language}' on this machine."
-  puts "Apple ships NLEmbedding sentence models only for en/it as of macOS 26.4.1."
+  puts "Use NaturalLanguageMac.embed_contextual for this language instead."
   exit 0
 end
 

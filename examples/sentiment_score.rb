@@ -1,15 +1,5 @@
 # frozen_string_literal: true
 
-# Run with:
-#   bundle exec ruby examples/sentiment_score.rb "<text>"
-#
-# Defaults to an English sentence. sentiment_score returns a Float roughly in
-# -1.0..1.0 (0.0 is a valid neutral score, distinct from nil failure).
-#
-# Apple ships no Japanese sentiment model on macOS 26.4.1, so Japanese input
-# returns nil. The workaround shown below translates JA -> EN via
-# rb-translation-mac, then scores the English text.
-
 $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 require "natural_language_mac"
 
@@ -22,7 +12,7 @@ puts "Score: #{score.inspect}"
 if score.nil?
   puts
   puts "sentiment_score returned nil. This is expected for languages with no"
-  puts "sentiment model (e.g. Japanese on macOS 26.4.1)."
+  puts "sentiment model, such as Japanese."
   puts "Workaround: translate to English first, then score."
 
   begin

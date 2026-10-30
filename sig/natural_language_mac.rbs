@@ -1,0 +1,38 @@
+module NaturalLanguageMac
+  # The gem version.
+  VERSION: String
+
+  # Base class for errors raised by this gem.
+  class Error < StandardError
+  end
+
+  # Detects the dominant language of +text+ with NLLanguageRecognizer.
+  # Returns its BCP-47 tag such as "ja" or "en", or an empty string when +text+ is empty or no language is recognized.
+  def self.detect_language: (String text) -> String
+
+  # Splits +text+ into words with NLTokenizer.
+  # Returns the tokens joined by newlines, or an empty string when +text+ is empty.
+  def self.tokenize: (String text) -> String
+
+  # Tags each word of +text+ with its lexical class using NLTagger, omitting whitespace and punctuation.
+  # Returns one "token\ttag" line per word, or an empty string when +text+ is empty.
+  def self.tag: (String text) -> String
+
+  # Scores the sentiment of +text+ as one paragraph with NLTagger's sentimentScore scheme and the detected language.
+  # Returns a score roughly from -1.0 to 1.0, or nil when +text+ is empty or no sentiment model ships for the detected language.
+  def self.sentiment_score: (String text) -> Float?
+
+  # Computes the sentence embedding of +text+ with NLEmbedding.sentenceEmbedding for +language+.
+  # Returns embedding_dimension(language) floats, or an empty array when an argument is empty or no sentence embedding ships for +language+.
+  def self.embed_sentence: (String text, String language) -> Array[Float]
+
+  # Returns the dimension of NLEmbedding.sentenceEmbedding for +language+, or 0 when +language+ is empty or no sentence embedding ships for it.
+  def self.embedding_dimension: (String language) -> Integer
+
+  # Computes a sentence vector of +text+ by mean-pooling the token vectors of NLContextualEmbedding for +language+.
+  # Returns contextual_dimension(language) floats, or an empty array when an argument is empty, no contextual embedding supports +language+, or its assets cannot be loaded.
+  def self.embed_contextual: (String text, String language) -> Array[Float]
+
+  # Returns the dimension of NLContextualEmbedding for +language+, or 0 when +language+ is empty or no contextual embedding supports it.
+  def self.contextual_dimension: (String language) -> Integer
+end
